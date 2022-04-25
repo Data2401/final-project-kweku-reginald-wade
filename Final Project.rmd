@@ -1,0 +1,108 @@
+---
+title: "California ARB Offset Credit Issuance Analysis"
+author: "K. Reginald Wade"
+date: "04/28/2022"
+output: 
+  slidy_presentation: 
+    highlight: espresso
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE)
+```
+
+```{r}
+#Install packages containing libraries: readxl, dplyr, magrittr, ggplot2
+#install.packages("tidyverse")
+
+#remove spaces and unique characters from column names
+#install.packages("janitor")
+
+library(tidyverse)
+library(readxl)
+library(dplyr, warn.conflicts = F)
+library(magrittr)
+library(ggplot2)
+library(janitor)
+```
+
+```{r}
+#Read in data
+arboc_issuance = read_excel("Data/arboc_issuance.xlsx", sheet="ARB Offset Credit Issuance")
+```
+
+## Data Summary
+```{r}
+names(arboc_issuance)
+```
+
+## Data Cleaning
+```{r}
+arboc_issuance_nice_names = clean_names(arboc_issuance)
+
+names(arboc_issuance_nice_names)
+```
+
+```{r}
+#Create Project type description mapping
+project_type = c("Forest", "ODS", "Livestock", "MMC", "Rice", "Urban")
+project_type_desc = c("U.S. Forest Projects", "Ozone Depleting Substance Projects", "Livestock Projects", "Mine Methane Capture Projects", "Rice Cultivation Projects", "Urban Forest Projects")
+
+project_types = data.frame(project_type, project_type_desc)
+```
+
+```{r}
+arboc_issuance_clean = inner_join(arboc_issuance_nice_names, project_types)
+```
+## Project Count Breakdown
+
+```{r}
+arboc_issuance_clean %>%
+  group_by(project_type_desc) %>% 
+  count()
+```
+
+```{r}
+arboc_issuance_clean %>%
+  ggplot(aes(x=project_type, fill=project_type_desc)) + geom_bar()
+```
+
+
+
+
+
+## R Markdown
+
+This is an R Markdown presentation. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document.
+
+## Slide with Bullets
+
+- Bullet 1
+- Bullet 2
+- Bullet 3
+
+## Slide with R Output
+
+Some text about this table and how interesting the results are! 
+
+```{r cars, echo = TRUE}
+summary(cars)
+```
+
+## Slide with Plot
+
+```{r pressure}
+plot(pressure)
+```
+
+some text about how cool my plot is. 
+
+---
+
+Three dashes make a new slide without having to put a title, and the three-# titles don't make a new slide, only the two and one. 
+
+### see? 
+
+still on the same slide. 
