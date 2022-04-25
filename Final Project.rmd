@@ -97,42 +97,13 @@ arboc_issuance_clean %>%
   ggplot(aes(x=project_type, fill=project_type_desc)) + geom_bar()
 ```
 
-
-
-
-
-## R Markdown
-
-This is an R Markdown presentation. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document.
-
-## Slide with Bullets
-
-- Bullet 1
-- Bullet 2
-- Bullet 3
-
-## Slide with R Output
-
-Some text about this table and how interesting the results are! 
-
-```{r cars, echo = TRUE}
-summary(cars)
+```{r}
+arboc_issuance_clean %>%
+  group_by(vintage) %>%
+  ggplot(aes(x=vintage, fill=project_type)) + geom_bar()
 ```
 
-## Slide with Plot
 
-```{r pressure}
-plot(pressure)
-```
 
-some text about how cool my plot is. 
 
----
 
-Three dashes make a new slide without having to put a title, and the three-# titles don't make a new slide, only the two and one. 
-
-### see? 
-
-still on the same slide. 
