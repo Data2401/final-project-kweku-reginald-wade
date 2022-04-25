@@ -8,10 +8,29 @@ output:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE, message = FALSE)
+knitr::opts_chunk$set(echo = FALSE)
 ```
+## Introduction
 
-```{r}
+- ESG
+- Fuel Regulation Standards
+- California Cap and Trade
+- Regulation and Risk Compliance
+
+## Questions
+
+- What projects should companies consider?
+- What projects are at risk for invalidation?
+
+## Required Packages
+* tidyverse
+    + readxl
+    + dplyr
+    + magrittr
+    + ggplot2
+* janitor
+
+```{r message=FALSE, warning=FALSE}
 #Install packages containing libraries: readxl, dplyr, magrittr, ggplot2
 #install.packages("tidyverse")
 
@@ -26,10 +45,16 @@ library(ggplot2)
 library(janitor)
 ```
 
-```{r}
+## Source Data
+
+The ARB Offset Credit Issuance data provides a list of offset projects that have been issued ARB offset credits.
+
+```{r echo=TRUE}
 #Read in data
-arboc_issuance = read_excel("Data/arboc_issuance.xlsx", sheet="ARB Offset Credit Issuance")
+arboc_issuance = read_excel("Data/arboc_issuance.xlsx", sheet="ARB Offset Credit Issuance", na=c("", "n/a"))
 ```
+
+The issuance data is updated at 12PM PST on the 2nd and 4th business Wednesday of every month.
 
 ## Data Summary
 ```{r}
@@ -37,13 +62,13 @@ names(arboc_issuance)
 ```
 
 ## Data Cleaning
-```{r}
+```{r echo=TRUE}
 arboc_issuance_nice_names = clean_names(arboc_issuance)
 
 names(arboc_issuance_nice_names)
 ```
 
-```{r}
+```{r echo=TRUE}
 #Create Project type description mapping
 project_type = c("Forest", "ODS", "Livestock", "MMC", "Rice", "Urban")
 project_type_desc = c("U.S. Forest Projects", "Ozone Depleting Substance Projects", "Livestock Projects", "Mine Methane Capture Projects", "Rice Cultivation Projects", "Urban Forest Projects")
@@ -51,15 +76,20 @@ project_type_desc = c("U.S. Forest Projects", "Ozone Depleting Substance Project
 project_types = data.frame(project_type, project_type_desc)
 ```
 
-```{r}
+```{r echo=TRUE}
 arboc_issuance_clean = inner_join(arboc_issuance_nice_names, project_types)
+
+arboc_issuance_clean %>%
+  top_n(5) %>% 
+  select(c("carb_issuance_id", "project_type", "project_type", "project_type_desc", "offset_project_name", "start_of_invalidation_timeframe", "vintage"))
+  
 ```
 ## Project Count Breakdown
 
 ```{r}
-arboc_issuance_clean %>%
-  group_by(project_type_desc) %>% 
-  count()
+#arboc_issuance_clean %>%
+#  group_by(project_type_desc) %>% 
+#  count()
 ```
 
 ```{r}
