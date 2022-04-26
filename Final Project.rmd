@@ -65,6 +65,9 @@ names(arboc_issuance)
 ```{r echo=TRUE}
 arboc_issuance_nice_names = clean_names(arboc_issuance)
 
+arboc_issuance_nice_names = arboc_issuance_nice_names %>%
+  mutate(arb_offset_credits_issued = strtoi(arb_offset_credits_issued))
+
 names(arboc_issuance_nice_names)
 ```
 
@@ -84,26 +87,37 @@ arboc_issuance_clean %>%
   select(c("carb_issuance_id", "project_type", "project_type", "project_type_desc", "offset_project_name", "start_of_invalidation_timeframe", "vintage"))
   
 ```
-## Project Count Breakdown
+## Project Breakdown
 
 ```{r}
 #arboc_issuance_clean %>%
 #  group_by(project_type_desc) %>% 
 #  count()
 ```
-
+### Project Count
 ```{r}
 arboc_issuance_clean %>%
   ggplot(aes(x=project_type, fill=project_type_desc)) + geom_bar()
 ```
+
+### Project Type by Vintage
 
 ```{r}
 arboc_issuance_clean %>%
   group_by(vintage) %>%
   ggplot(aes(x=vintage, fill=project_type)) + geom_bar()
 ```
+### Credits Issued by Project
 
+```{r}
+options(scipen=10000)
 
-
+arboc_issuance_clean %>%
+  select(opr_project_id, project_type_desc, arb_offset_credits_issued) %>% 
+  group_by(opr_project_id, project_type_desc) %>%
+  head(10) %>% 
+  summarise(total_credits = sum(arb_offset_credits_issued, na.rm = T)) %>%
+  ggplot(aes(x=reorder(opr_project_id, -total_credits), y=total_credits, color=project_type_desc)) + geom_point()
+```
 
 
