@@ -30,6 +30,7 @@ knitr::opts_chunk$set(echo = FALSE)
 * janitor
 * data.table
 * formattable
+* plotly
 
 ```{r message=FALSE, warning=FALSE}
 #Install packages containing libraries: readxl, dplyr, magrittr, ggplot2
@@ -50,6 +51,7 @@ library(ggplot2)
 library(janitor)
 library(data.table)
 library(formattable)
+library(plotly)
 ```
 
 ## Source Data
@@ -58,7 +60,7 @@ library(formattable)
 
 ```{r echo=TRUE}
 #Read in data
-landfillgas_raw = read_excel("Data/opprjslmopdata-detailed.xlsx", sheet="LMOP Database")
+landfillgas_raw = read_excel("Data/lmopdata.xlsx", sheet="LMOP Database")
 ```
 
 Source: https://www.epa.gov/lmop/lmop-landfill-and-project-database
@@ -125,10 +127,11 @@ anaerobicdigesterfas_clean %>%
 
 ## Project Breakdown
 
-### RNG Project Count by Year
+### RNG Opearational Project Count by Year
 
 ```{r}
 landfillgas_count_by_year = landfillgas_clean %>% 
+  filter(current_project_status == "Operational") %>% 
   mutate(rng_type = "Landfill RNG", operational_year = format(as.Date(project_start_date, format="%d/%m/%Y"),"%Y")) %>% 
   select(rng_type, operational_year) %>% 
   group_by(rng_type, operational_year) %>% 
@@ -144,13 +147,14 @@ rng_count_by_year = bind_rows(landfillgas_count_by_year, anaerobicdigesterfas_co
 
 rng_count_by_year %>%
   filter(operational_year > 2002) %>% 
-  ggplot(aes(x=as.character(operational_year), y=n, fill=rng_type)) + geom_bar(stat='identity') + labs(title="Project Count by Year", fill="RNG Type", x="Operatonal Year", y="Project Count") + theme(legend.position = "bottom", plot.title = element_text(hjust = 0.5))
+  ggplot(aes(x=as.character(operational_year), y=n, fill=rng_type)) + geom_bar(stat='identity') + labs(title="Operational Project Count by Year", fill="RNG Type", x="Operatonal Year", y="Project Count") + theme(legend.position = "bottom", plot.title = element_text(hjust = 0.5))
 ```
 
-### RNG Project Count by State
+### RNG Operational Project Count by State
 
 ```{r}
 landfillgas_count_by_state = landfillgas_clean %>% 
+  filter(current_project_status == "Operational") %>% 
   mutate(rng_type = "Landfill RNG") %>% 
   select(rng_type, state) %>% 
   group_by(rng_type, state) %>% 
@@ -165,11 +169,12 @@ anaerobicdigesterfas_count_by_state = anaerobicdigesterfas_clean %>%
 rng_count_by_state = bind_rows(landfillgas_count_by_state, anaerobicdigesterfas_count_by_state)
 
 rng_count_by_state %>%
-  ggplot(aes(x=reorder(state, n), y=n, fill=rng_type, )) + geom_bar(stat='identity') + labs(title="Project Count by State", fill="RNG Type", x="State", y="Project Count") + theme(legend.position = "bottom", plot.title = element_text(hjust = 0.5)) + coord_flip()
+  ggplot(aes(x=reorder(state, n), y=n, fill=rng_type, )) + geom_bar(stat='identity') + labs(title="Operational Project Count by State", fill="RNG Type", x="State", y="Project Count") + theme(legend.position = "bottom", plot.title = element_text(hjust = 0.5)) + coord_flip()
 ```
 
 ```{r}
 landfillgas_count_by_state = landfillgas_clean %>% 
+  filter(current_project_status == "Operational") %>% 
   mutate(rng_type = "Landfill RNG") %>% 
   select(rng_type, state) %>% 
   group_by(rng_type, state) %>% 
@@ -187,5 +192,72 @@ rng_count_by_state %>%
   ggplot(aes(x=reorder(state, n), y=n, fill=rng_type, )) + geom_bar(stat='identity') + labs(title="Project Count by State", fill="RNG Type", x="State", y="Project Count") + theme(legend.position = "bottom", plot.title = element_text(hjust = 0.5)) + coord_flip() + facet_wrap(~rng_type)
 ```
 
+## Landfill RNG Project Map
+
+```{r}
+project_graph_lf = plot_geo(landfillgas_count_by_state,
+                         locationmode="USA-states") %>%
+  add_trace(locations = ~state,
+            z = ~n,
+            zmin = 0, 
+            zmax = max(rng_count_by_state$n),
+            color= ~n,
+            colorscale = "Viridis",
+            reversescale = T) %>% 
+  layout(title = "Landfill RNG Project Map by State", geo = list(scope = "usa"))
+
+project_graph_lf
+```
+
+## Ag Gas Project Map
+
+```{r}
+project_graph_ag = plot_geo(anaerobicdigesterfas_count_by_state,
+                         locationmode="USA-states") %>%
+  add_trace(locations = ~state,
+            z = ~n,
+            zmin = 0, 
+            zmax = max(rng_count_by_state$n),
+            color= ~n,
+            colorscale = "Viridis",
+            reversescale = T) %>% 
+  layout(title = "Ag RNG Project Map by State", geo = list(scope = "usa"))
+
+project_graph_ag
+```
+```{r}
+landfillgas_count_by_geo = landfillgas_clean %>% 
+  filter(current_project_status == "Operational") %>% 
+  select(landfill_name, state, latitude, longitude) %>% 
+  group_by(landfill_name, state, latitude, longitude) %>% 
+  count()
+```
+
+## Landfill RNG Project Locations
+
+```{r warning=FALSE}
+g = list(
+  scope = 'usa',
+  projection = list(type = 'albers usa'),
+  showland = TRUE,
+  landcolor = toRGB("gray85"),
+  subunitwidth = 1,
+  countrywidth = 1,
+  subunitcolor = toRGB("white"),
+  countrycolor = toRGB("white")
+)
+
+project_graph_geo = plot_geo(landfillgas_count_by_geo,
+               locationmode = "USA-states",
+               sizes = c(1, 250)) %>% 
+  add_markers(x = ~longitude, y = ~latitude,
+              size = ~n, color=~n,
+              hoverinfo = "text", fill = ~"",
+              text = ~paste(landfillgas_count_by_geo$landfill_name)) %>%
+  layout(title = "Landfill RNG Projects", geo = g)
+  
+
+project_graph_geo
+```
 
 
