@@ -75,6 +75,13 @@ AgSTAR publishes updated data on this website periodically (generally, two times
 
 Source: https://www.epa.gov/agstar/livestock-anaerobic-digester-database
 
+### RNG Facility Data
+
+```{r echo=TRUE}
+rng_facility_raw = read_csv("Data/RNG_Facilities.csv", show_col_types = FALSE)
+```
+
+
 ## Data Summary
 
 ### LMOP Landfill and Landfill Gas Energy Project Database
@@ -87,6 +94,10 @@ names(landfillgas_raw)
 
 ```{r echo=TRUE}
 names(anaerobicdigesterfas_raw)
+```
+
+```{r echo=TRUE}
+names(rng_facility_raw)
 ```
 
 ## Data Cleaning
@@ -103,6 +114,13 @@ names(landfillgas_clean)
 ```{r echo=TRUE}
 anaerobicdigesterfas_clean = clean_names(anaerobicdigesterfas_raw)
 names(anaerobicdigesterfas_clean)
+```
+
+### RNG Facility Data
+
+```{r echo=TRUE}
+rng_facility_clean = clean_names(rng_facility_raw)
+names(rng_facility_clean)
 ```
 
 ## EDA
@@ -233,7 +251,7 @@ landfillgas_count_by_geo = landfillgas_clean %>%
   count()
 ```
 
-## Landfill RNG Project Locations
+## RNG Facility Locations
 
 ```{r warning=FALSE}
 g = list(
@@ -247,17 +265,29 @@ g = list(
   countrycolor = toRGB("white")
 )
 
-project_graph_geo = plot_geo(landfillgas_count_by_geo,
+project_graph_geo = plot_geo(rng_facility_clean,
                locationmode = "USA-states",
                sizes = c(1, 250)) %>% 
   add_markers(x = ~longitude, y = ~latitude,
-              size = ~n, color=~n,
+              size = ~ifelse(is.na(gas_flow_to_project_scfm), 4000, gas_flow_to_project_scfm), color = ~city,
               hoverinfo = "text", fill = ~"",
-              text = ~paste(landfillgas_count_by_geo$landfill_name)) %>%
-  layout(title = "Landfill RNG Projects", geo = g)
+              text = ~paste(rng_facility_clean$facility_name, " - ", rng_facility_clean$city)) %>%
+  layout(title = "RNG Facilities", geo = g, showlegend = FALSE)
   
 
 project_graph_geo
+```
+## Landfill RNG Project Forecast
+
+```{r}
+options(scipen=10000)
+
+landfillgas_clean %>% 
+  filter(!current_project_status  %in% c("Shutdown", "Unknown", "Low Potential")) %>% 
+  filter(project_type_category  != "Unknown") %>% 
+  group_by(current_project_status, project_type_category) %>% 
+  summarise(mean_waste =mean(waste_in_place_tons, na.rm=T), n = sum()) %>% 
+  ggplot(aes(x=reorder(current_project_status, mean_waste), y=mean_waste, fill=project_type_category)) + geom_bar(stat="identity", position="dodge")
 ```
 
 
