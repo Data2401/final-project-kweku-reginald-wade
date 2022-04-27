@@ -1,5 +1,5 @@
 ---
-title: "California ARB Offset Credit Issuance Analysis"
+title: "US Renewable Natural Gas Analysis"
 author: "K. Reginald Wade"
 date: "04/28/2022"
 output: 
@@ -14,13 +14,12 @@ knitr::opts_chunk$set(echo = FALSE)
 
 - ESG
 - Fuel Regulation Standards
-- California Cap and Trade
-- Regulation and Risk Compliance
+- Renewable Natural Gas (RNG)
 
 ## Questions
 
-- What projects should companies consider?
-- What projects are at risk for invalidation?
+- What is the future outlook on RNG?
+- What states are leading the charge?
 
 ## Required Packages
 * tidyverse
@@ -29,6 +28,8 @@ knitr::opts_chunk$set(echo = FALSE)
     + magrittr
     + ggplot2
 * janitor
+* data.table
+* formattable
 
 ```{r message=FALSE, warning=FALSE}
 #Install packages containing libraries: readxl, dplyr, magrittr, ggplot2
@@ -37,87 +38,95 @@ knitr::opts_chunk$set(echo = FALSE)
 #remove spaces and unique characters from column names
 #install.packages("janitor")
 
+#Nice data tables
+#install.packages("data.table")
+#install.packages("formattable")
+
 library(tidyverse)
 library(readxl)
-library(dplyr, warn.conflicts = F)
+library(dplyr)
 library(magrittr)
 library(ggplot2)
 library(janitor)
+library(data.table)
+library(formattable)
 ```
 
 ## Source Data
 
-The ARB Offset Credit Issuance data provides a list of offset projects that have been issued ARB offset credits.
+### LFG Energy Project Data Files (March 2022)
 
 ```{r echo=TRUE}
 #Read in data
-arboc_issuance = read_excel("Data/arboc_issuance.xlsx", sheet="ARB Offset Credit Issuance", na=c("", "n/a"))
+landfillgas_raw = read_excel("Data/opprjslmopdata-detailed.xlsx", sheet="LMOP Database")
 ```
 
-The issuance data is updated at 12PM PST on the 2nd and 4th business Wednesday of every month.
+Source: https://www.epa.gov/lmop/lmop-landfill-and-project-database
+
+### AgSTAR Livestock Anaerobic Digester Database
+
+```{r echo=TRUE}
+anaerobicdigesterfas_raw = read_excel("Data/agstar-livestock-ad-database.xlsx", sheet="Operational and Construction")
+```
+
+AgSTAR publishes updated data on this website periodically (generally, two times per year) to enhance public access to information and support the development of biogas recovery projects
+
+Source: https://www.epa.gov/agstar/livestock-anaerobic-digester-database
 
 ## Data Summary
-```{r}
-names(arboc_issuance)
+
+### LMOP Landfill and Landfill Gas Energy Project Database
+
+```{r echo=TRUE}
+names(landfillgas_raw)
+```
+
+### AgSTAR Anaerobic Digester Database
+
+```{r echo=TRUE}
+names(anaerobicdigesterfas_raw)
 ```
 
 ## Data Cleaning
-```{r echo=TRUE}
-arboc_issuance_nice_names = clean_names(arboc_issuance)
 
-arboc_issuance_nice_names = arboc_issuance_nice_names %>%
-  mutate(arb_offset_credits_issued = strtoi(arb_offset_credits_issued))
-
-names(arboc_issuance_nice_names)
-```
+### LMOP Landfill and Landfill Gas Energy Project Database
 
 ```{r echo=TRUE}
-#Create Project type description mapping
-project_type = c("Forest", "ODS", "Livestock", "MMC", "Rice", "Urban")
-project_type_desc = c("U.S. Forest Projects", "Ozone Depleting Substance Projects", "Livestock Projects", "Mine Methane Capture Projects", "Rice Cultivation Projects", "Urban Forest Projects")
-
-project_types = data.frame(project_type, project_type_desc)
+landfillgas_clean = clean_names(landfillgas_raw)
+names(landfillgas_clean)
 ```
+
+### AgSTAR Anaerobic Digester Database
 
 ```{r echo=TRUE}
-arboc_issuance_clean = inner_join(arboc_issuance_nice_names, project_types)
-
-arboc_issuance_clean %>%
-  top_n(5) %>% 
-  select(c("carb_issuance_id", "project_type", "project_type", "project_type_desc", "offset_project_name", "start_of_invalidation_timeframe", "vintage"))
-  
-```
-## Project Breakdown
-
-```{r}
-#arboc_issuance_clean %>%
-#  group_by(project_type_desc) %>% 
-#  count()
-```
-### Project Count
-```{r}
-arboc_issuance_clean %>%
-  ggplot(aes(x=project_type, fill=project_type_desc)) + geom_bar()
+anaerobicdigesterfas_clean = clean_names(anaerobicdigesterfas_raw)
+names(anaerobicdigesterfas_clean)
 ```
 
-### Project Type by Vintage
+## EDA
+
+### LMOP Landfill and Landfill Gas Energy Project Database
 
 ```{r}
-arboc_issuance_clean %>%
-  group_by(vintage) %>%
-  ggplot(aes(x=vintage, fill=project_type)) + geom_bar()
+landfillgas_clean %>% 
+  select(landfill_name) %>% 
+  head(5) %>% 
+  formattable()
 ```
-### Credits Issued by Project
+
+### AgSTAR Anaerobic Digester Database
 
 ```{r}
-options(scipen=10000)
+anaerobicdigesterfas_clean %>%
+  select(project_name, project_type, animal_farm_type_s, year_operational, biogas_end_use_s) %>% 
+  head(5) %>% 
+  formattable()
+```
 
-arboc_issuance_clean %>%
-  select(opr_project_id, project_type_desc, arb_offset_credits_issued) %>% 
-  group_by(opr_project_id, project_type_desc) %>%
-  head(10) %>% 
-  summarise(total_credits = sum(arb_offset_credits_issued, na.rm = T)) %>%
-  ggplot(aes(x=reorder(opr_project_id, -total_credits), y=total_credits, color=project_type_desc)) + geom_point()
+
+### Project Breakdown
+```{r}
+
 ```
 
 
