@@ -109,7 +109,7 @@ names(anaerobicdigesterfas_clean)
 
 ```{r}
 landfillgas_clean %>% 
-  select(landfill_name) %>% 
+  select(landfill_name, project_name, state, waste_in_place_tons, lfg_energy_project_type, project_start_date) %>% 
   head(5) %>% 
   formattable()
 ```
@@ -118,15 +118,74 @@ landfillgas_clean %>%
 
 ```{r}
 anaerobicdigesterfas_clean %>%
-  select(project_name, project_type, animal_farm_type_s, year_operational, biogas_end_use_s) %>% 
+  select(project_name, state, project_type, animal_farm_type_s, year_operational, biogas_end_use_s) %>% 
   head(5) %>% 
   formattable()
 ```
 
+## Project Breakdown
 
-### Project Breakdown
+### RNG Project Count by Year
+
 ```{r}
+landfillgas_count_by_year = landfillgas_clean %>% 
+  mutate(rng_type = "Landfill RNG", operational_year = format(as.Date(project_start_date, format="%d/%m/%Y"),"%Y")) %>% 
+  select(rng_type, operational_year) %>% 
+  group_by(rng_type, operational_year) %>% 
+  count()
 
+anaerobicdigesterfas_count_by_year = anaerobicdigesterfas_clean %>%
+  mutate(rng_type = "Ag RNG", operational_year = format(as.Date(ISOdate(year_operational, 1, 1), format="%d/%m/%Y"),"%Y")) %>% 
+  select(rng_type, operational_year) %>%
+  group_by(rng_type, operational_year) %>%
+  count()
+
+rng_count_by_year = bind_rows(landfillgas_count_by_year, anaerobicdigesterfas_count_by_year)
+
+rng_count_by_year %>%
+  filter(operational_year > 2002) %>% 
+  ggplot(aes(x=as.character(operational_year), y=n, fill=rng_type)) + geom_bar(stat='identity') + labs(title="Project Count by Year", fill="RNG Type", x="Operatonal Year", y="Project Count") + theme(legend.position = "bottom", plot.title = element_text(hjust = 0.5))
 ```
+
+### RNG Project Count by State
+
+```{r}
+landfillgas_count_by_state = landfillgas_clean %>% 
+  mutate(rng_type = "Landfill RNG") %>% 
+  select(rng_type, state) %>% 
+  group_by(rng_type, state) %>% 
+  count()
+
+anaerobicdigesterfas_count_by_state = anaerobicdigesterfas_clean %>%
+  mutate(rng_type = "Ag RNG") %>% 
+  select(rng_type, state) %>%
+  group_by(rng_type, state) %>%
+  count()
+
+rng_count_by_state = bind_rows(landfillgas_count_by_state, anaerobicdigesterfas_count_by_state)
+
+rng_count_by_state %>%
+  ggplot(aes(x=reorder(state, n), y=n, fill=rng_type, )) + geom_bar(stat='identity') + labs(title="Project Count by State", fill="RNG Type", x="State", y="Project Count") + theme(legend.position = "bottom", plot.title = element_text(hjust = 0.5)) + coord_flip()
+```
+
+```{r}
+landfillgas_count_by_state = landfillgas_clean %>% 
+  mutate(rng_type = "Landfill RNG") %>% 
+  select(rng_type, state) %>% 
+  group_by(rng_type, state) %>% 
+  count()
+
+anaerobicdigesterfas_count_by_state = anaerobicdigesterfas_clean %>%
+  mutate(rng_type = "Ag RNG") %>% 
+  select(rng_type, state) %>%
+  group_by(rng_type, state) %>%
+  count()
+
+rng_count_by_state = bind_rows(landfillgas_count_by_state, anaerobicdigesterfas_count_by_state)
+
+rng_count_by_state %>%
+  ggplot(aes(x=reorder(state, n), y=n, fill=rng_type, )) + geom_bar(stat='identity') + labs(title="Project Count by State", fill="RNG Type", x="State", y="Project Count") + theme(legend.position = "bottom", plot.title = element_text(hjust = 0.5)) + coord_flip() + facet_wrap(~rng_type)
+```
+
 
 
