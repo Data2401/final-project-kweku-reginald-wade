@@ -24,7 +24,7 @@ knitr::opts_chunk$set(echo = FALSE)
 - What is the future outlook on RNG?
 - What states are leading the charge?
 - What is the demand for RNG?
-- Does it make a difference
+- Does it make a difference?
 
 ## Required Packages
 * tidyverse
