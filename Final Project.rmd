@@ -23,6 +23,8 @@ knitr::opts_chunk$set(echo = FALSE)
 
 - What is the future outlook on RNG?
 - What states are leading the charge?
+- What is the demand for RNG?
+- Does it make a difference
 
 ## Required Packages
 * tidyverse
@@ -363,6 +365,31 @@ anaerobicdigesterfas_clean %>%
   ggplot(aes(x=year_operational, y=electricity_generated_k_wh_yr, color=animal_farm_type_s)) + geom_jitter() + scale_x_log10() + scale_y_log10() + labs(title="Electricity Generation Estimate/year (KWH)", color="Animal Farm Type", x="Operational Year", y="Electricity Generation Estimate")
 ```
 
+## Demand
+
+### Project Count by End Use
+
+```{r}
+anaerobicdigesterfas_clean %>% 
+  mutate(num_animals = pmax(dairy, cattle, poultry, swine, na.rm=T)) %>% 
+  filter(animal_farm_type_s %in% c("Dairy", "Cattle", "Poultry", "Swine")) %>% 
+  filter(biogas_end_use_s %in% c("CNG", "Electricity", "Cogeneration", "Pipeline Gas", "Pipeline to Electricity")) %>% 
+  select(project_name, status, state, animal_farm_type_s, num_animals, project_type, digester_type, year_operational, biogas_generation_estimate_cu_ft_day, electricity_generated_k_wh_yr, biogas_end_use_s, receiving_utility, total_emission_reductions_mtco2e_yr) %>%
+  ggplot(aes(biogas_end_use_s, fill=animal_farm_type_s)) + geom_bar(position="dodge") + labs(title="Project Count by End Use", x="Biogas End Use", y="Projects", fill="Animal Type")
+```
+
+### Power Generation
+
+```{r}
+anaerobicdigesterfas_clean %>% 
+  mutate(num_animals = pmax(dairy, cattle, poultry, swine, na.rm=T)) %>% 
+  filter(status == "Operational", year_operational > 2010, receiving_utility != "NA") %>% 
+  filter(animal_farm_type_s %in% c("Dairy", "Cattle", "Poultry", "Swine")) %>% 
+  filter(!is.na(electricity_generated_k_wh_yr)) %>% 
+  select(project_name, status, state, animal_farm_type_s, num_animals, project_type, digester_type, year_operational, biogas_generation_estimate_cu_ft_day, electricity_generated_k_wh_yr, biogas_end_use_s, receiving_utility, total_emission_reductions_mtco2e_yr) %>% 
+  ggplot(aes(x=reorder(substr(receiving_utility, 1, 30), electricity_generated_k_wh_yr), y=electricity_generated_k_wh_yr, fill=animal_farm_type_s)) + geom_bar(stat = "identity") + labs(title="Utility Company Generation Acquisition", fill="Animal Farm Type", x="Utility", y="Electricity Generated") + coord_flip()
+```
+
 ## Carbon Zero
 
 ### Ag Emissions Reductions
@@ -393,5 +420,4 @@ landfillgas_clean %>%
   select(project_start_date, waste_in_place_tons, lfg_collected_mmscfd, lfg_energy_project_type, project_type_category, current_year_emission_reductions_mmtco2e_yr_direct, actual_mw_generation, current_year_emission_reductions_mmtco2e_yr_avoided) %>% 
   ggplot(aes(x=project_start_date, y=current_year_emission_reductions_mmtco2e_yr_avoided * 1000, color=project_type_category)) + geom_jitter() + labs(title="Landfill Gas Emissions Avoidance", color="Product Type Category", x="Operational Year", y="Total Emission")
 ```
-
 
