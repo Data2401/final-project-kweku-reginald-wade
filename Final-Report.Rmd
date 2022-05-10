@@ -432,6 +432,6 @@ landfillgas_clean %>%
 
 In looking at the data I believe the outlook for RNG is positive. Through the direction of the EPA we see states such as California, Michigan and New York leading the charge. We even see conservative states like Texas investing in RNG projects. 
 
-With more municipalities buying compressed natural gas vehicles we will continue to see demand rise. We also see electricity utilities replacing their current fossil fuel based natural gas with renewable natural gas.
+Demand is ramping up as municipalities such as Dallas leading the way in buying compressed natural gas vehicles. We also see every major electricity utility adding renewable natural gas to their portfolio in-lieu of fossil fuel based natural gas.
 
-As we embark on the road to Carbon zero, we see the use of RNG has an effect as data shows an increase in emission reduction and avoidance.
+As we embark on the road to Carbon zero, we see the use of RNG has an effect as data shows an increase in not only emission reduction, but avoidance.
