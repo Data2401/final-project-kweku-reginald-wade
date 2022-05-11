@@ -1,0 +1,423 @@
+---
+title: "US Renewable Natural Gas Analysis"
+author: "Kweku Reginald Wade"
+date: "04/28/2022"
+output: 
+  slidy_presentation: 
+    highlight: espresso
+    css: style.css
+  ioslides_presentation: 
+    highlight: espresso
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+## Introduction
+
+- ESG
+- Fuel Regulation Standards
+- Renewable Natural Gas (RNG)
+
+## Questions
+
+- What is the future outlook on RNG?
+- What states are leading the charge?
+- What is the demand for RNG?
+- Does it make a difference?
+
+## Required Packages
+* tidyverse
+    + readxl
+    + dplyr
+    + magrittr
+    + ggplot2
+* janitor
+* data.table
+* formattable
+* plotly
+
+```{r message=FALSE, warning=FALSE}
+#Install packages containing libraries: readxl, dplyr, magrittr, ggplot2
+#install.packages("tidyverse")
+
+#remove spaces and unique characters from column names
+#install.packages("janitor")
+
+#Nice data tables
+#install.packages("data.table")
+#install.packages("formattable")
+
+library(tidyverse)
+library(readxl)
+library(dplyr)
+library(magrittr)
+library(ggplot2)
+library(janitor)
+library(data.table)
+library(formattable)
+library(plotly)
+```
+
+## Source Data
+
+### LFG Energy Project Data Files (March 2022)
+
+```{r echo=TRUE}
+#Read in data
+landfillgas_raw = read_excel("Data/lmopdata.xlsx", sheet="LMOP Database")
+```
+
+Source: https://www.epa.gov/lmop/lmop-landfill-and-project-database
+
+### AgSTAR Livestock Anaerobic Digester Database
+
+```{r echo=TRUE}
+anaerobicdigesterfas_raw = read_excel("Data/agstar-livestock-ad-database.xlsx", sheet="Operational and Construction")
+```
+
+AgSTAR publishes updated data on this website periodically (generally, two times per year) to enhance public access to information and support the development of biogas recovery projects
+
+Source: https://www.epa.gov/agstar/livestock-anaerobic-digester-database
+
+### RNG Facility Data
+
+```{r echo=TRUE}
+rng_facility_raw = read_csv("Data/RNG_Facilities.csv", show_col_types = FALSE)
+```
+
+
+## Data Summary
+
+### LMOP Landfill and Landfill Gas Energy Project Database
+
+```{r echo=TRUE}
+names(landfillgas_raw)
+```
+
+### AgSTAR Anaerobic Digester Database
+
+```{r echo=TRUE}
+names(anaerobicdigesterfas_raw)
+```
+
+```{r echo=TRUE}
+names(rng_facility_raw)
+```
+
+## Data Cleaning
+
+### LMOP Landfill and Landfill Gas Energy Project Database
+
+```{r echo=TRUE}
+landfillgas_clean = clean_names(landfillgas_raw)
+names(landfillgas_clean)
+```
+
+### AgSTAR Anaerobic Digester Database
+
+```{r echo=TRUE}
+anaerobicdigesterfas_clean = clean_names(anaerobicdigesterfas_raw)
+names(anaerobicdigesterfas_clean)
+```
+
+### RNG Facility Data
+
+```{r echo=TRUE}
+rng_facility_clean = clean_names(rng_facility_raw)
+names(rng_facility_clean)
+```
+
+## EDA
+
+### LMOP Landfill and Landfill Gas Energy Project Database
+
+```{r}
+landfillgas_clean %>% 
+  select(landfill_name, project_name, state, waste_in_place_tons, lfg_energy_project_type, project_start_date) %>% 
+  head(5) %>% 
+  formattable()
+```
+
+### AgSTAR Anaerobic Digester Database
+
+```{r}
+anaerobicdigesterfas_clean %>%
+  select(project_name, state, project_type, animal_farm_type_s, year_operational, biogas_end_use_s) %>% 
+  head(5) %>% 
+  formattable()
+```
+
+## Project Breakdown
+
+### RNG Opearational Project Count by Year
+
+```{r}
+landfillgas_count_by_year = landfillgas_clean %>% 
+  filter(current_project_status == "Operational") %>% 
+  mutate(rng_type = "Landfill RNG", operational_year = format(as.Date(project_start_date, format="%d/%m/%Y"),"%Y")) %>% 
+  select(rng_type, operational_year) %>% 
+  group_by(rng_type, operational_year) %>% 
+  count()
+
+anaerobicdigesterfas_count_by_year = anaerobicdigesterfas_clean %>%
+  mutate(rng_type = "Ag RNG", operational_year = format(as.Date(ISOdate(year_operational, 1, 1), format="%d/%m/%Y"),"%Y")) %>% 
+  select(rng_type, operational_year) %>%
+  group_by(rng_type, operational_year) %>%
+  count()
+
+rng_count_by_year = bind_rows(landfillgas_count_by_year, anaerobicdigesterfas_count_by_year)
+
+rng_count_by_year %>%
+  filter(operational_year > 2002) %>% 
+  ggplot(aes(x=as.character(operational_year), y=n, fill=rng_type)) + geom_bar(stat='identity') + labs(title="Operational Project Count by Year", fill="RNG Type", x="Operatonal Year", y="Project Count") + theme(legend.position = "bottom", plot.title = element_text(hjust = 0.5))
+```
+
+### RNG Operational Project Count by State
+
+```{r}
+landfillgas_count_by_state = landfillgas_clean %>% 
+  filter(current_project_status == "Operational") %>% 
+  mutate(rng_type = "Landfill RNG") %>% 
+  select(rng_type, state) %>% 
+  group_by(rng_type, state) %>% 
+  count()
+
+anaerobicdigesterfas_count_by_state = anaerobicdigesterfas_clean %>%
+  mutate(rng_type = "Ag RNG") %>% 
+  select(rng_type, state) %>%
+  group_by(rng_type, state) %>%
+  count()
+
+rng_count_by_state = bind_rows(landfillgas_count_by_state, anaerobicdigesterfas_count_by_state)
+
+rng_count_by_state %>%
+  ggplot(aes(x=reorder(state, n), y=n, fill=rng_type, )) + geom_bar(stat='identity') + labs(title="Operational Project Count by State", fill="RNG Type", x="State", y="Project Count") + theme(legend.position = "bottom", plot.title = element_text(hjust = 0.5)) + coord_flip()
+```
+
+```{r}
+landfillgas_count_by_state = landfillgas_clean %>% 
+  filter(current_project_status == "Operational") %>% 
+  mutate(rng_type = "Landfill RNG") %>% 
+  select(rng_type, state) %>% 
+  group_by(rng_type, state) %>% 
+  count()
+
+anaerobicdigesterfas_count_by_state = anaerobicdigesterfas_clean %>%
+  mutate(rng_type = "Ag RNG") %>% 
+  select(rng_type, state) %>%
+  group_by(rng_type, state) %>%
+  count()
+
+rng_count_by_state = bind_rows(landfillgas_count_by_state, anaerobicdigesterfas_count_by_state)
+
+rng_count_by_state %>%
+  ggplot(aes(x=reorder(state, n), y=n, fill=rng_type, )) + geom_bar(stat='identity') + labs(title="Project Count by State", fill="RNG Type", x="State", y="Project Count") + theme(legend.position = "bottom", plot.title = element_text(hjust = 0.5)) + coord_flip() + facet_wrap(~rng_type)
+```
+
+## Landfill RNG Project Map
+
+```{r}
+project_graph_lf = plot_geo(landfillgas_count_by_state,
+                         locationmode="USA-states") %>%
+  add_trace(locations = ~state,
+            z = ~n,
+            zmin = 0, 
+            zmax = max(rng_count_by_state$n),
+            color= ~n,
+            colorscale = "Viridis",
+            reversescale = T) %>% 
+  layout(title = "Landfill RNG Project Map by State", geo = list(scope = "usa"))
+
+project_graph_lf
+```
+
+## Ag Gas Project Map
+
+```{r}
+project_graph_ag = plot_geo(anaerobicdigesterfas_count_by_state,
+                         locationmode="USA-states") %>%
+  add_trace(locations = ~state,
+            z = ~n,
+            zmin = 0, 
+            zmax = max(rng_count_by_state$n),
+            color= ~n,
+            colorscale = "Viridis",
+            reversescale = T) %>% 
+  layout(title = "Ag RNG Project Map by State", geo = list(scope = "usa"))
+
+project_graph_ag
+```
+```{r}
+landfillgas_count_by_geo = landfillgas_clean %>% 
+  filter(current_project_status == "Operational") %>% 
+  select(landfill_name, state, latitude, longitude) %>% 
+  group_by(landfill_name, state, latitude, longitude) %>% 
+  count()
+```
+
+## RNG Facility Locations
+
+```{r warning=FALSE}
+g = list(
+  scope = 'usa',
+  projection = list(type = 'albers usa'),
+  showland = TRUE,
+  landcolor = toRGB("gray85"),
+  subunitwidth = 1,
+  countrywidth = 1,
+  subunitcolor = toRGB("white"),
+  countrycolor = toRGB("white")
+)
+
+project_graph_geo = plot_geo(rng_facility_clean,
+               locationmode = "USA-states",
+               sizes = c(1, 250)) %>% 
+  add_markers(x = ~longitude, y = ~latitude,
+              size = ~ifelse(is.na(gas_flow_to_project_scfm), 4000, gas_flow_to_project_scfm), color = ~city,
+              hoverinfo = "text", fill = ~"",
+              text = ~paste(rng_facility_clean$facility_name, " - ", rng_facility_clean$city)) %>%
+  layout(title = "RNG Facilities", geo = g, showlegend = FALSE)
+  
+
+project_graph_geo
+```
+## Landfill RNG Project Forecast
+
+```{r message=FALSE, warning=FALSE}
+options(scipen=10000)
+
+landfillgas_clean %>% 
+  filter(!current_project_status  %in% c("Shutdown", "Unknown", "Low Potential")) %>% 
+  filter(project_type_category  != "Unknown") %>% 
+  group_by(current_project_status, project_type_category) %>% 
+  summarise(mean_waste =mean(waste_in_place_tons, na.rm=T), n = sum()) %>% 
+  ggplot(aes(x=reorder(current_project_status, mean_waste), y=mean_waste, fill=project_type_category)) + geom_bar(stat="identity", position="dodge") + labs(title="Average Waste by Project Status", fill="Project Type Category", y="Average Waste (tons)", x="Project Status")
+```
+```{r eval=FALSE, include=FALSE}
+landfillgas_facilities = landfillgas_clean %>% 
+  filter(current_project_status == "Operational", current_landfill_status =="Open") %>% 
+  mutate(operational_year = as.numeric(format(as.Date(project_start_date, format="%d/%m/%Y"),"%Y"))) %>%
+  select(operational_year) %>% 
+  group_by(operational_year) %>% 
+  count() %>% 
+  mutate(id=1, facilities = n) %>% 
+  select(id, operational_year, facilities)
+
+get_num_facilities = function(year) {
+  
+  filter(landfillgas_facilities, operational_year <= year) %>%
+    group_by(id) %>% 
+    summarize(num_facilities = sum(facilities)) %>% 
+    select(num_facilities) %>% 
+    as.numeric()
+}
+
+landfillgas_facilities_by_year = landfillgas_facilities %>% 
+  mutate(rng_type = "Landfill RNG", num_facilities = get_num_facilities(operational_year)) %>% 
+  select(rng_type, operational_year, num_facilities)
+
+anaerobicdigesterfas_facilities_by_year = anaerobicdigesterfas_clean %>%
+  mutate(rng_type = "Ag RNG", operational_year = as.numeric(format(as.Date(ISOdate(year_operational, 1, 1), format="%d/%m/%Y"),"%Y"))) %>% 
+  select(rng_type, operational_year) %>%
+  group_by(rng_type, operational_year) %>%
+  count() %>% 
+  mutate(num_facilities = n) %>% 
+  select(rng_type, operational_year, num_facilities)
+
+rng_facilities_by_year = bind_rows(landfillgas_facilities_by_year, anaerobicdigesterfas_facilities_by_year)
+
+rng_facilities_by_year %>%
+  #filter(operational_year > 2002) %>% 
+  ggplot(aes(x=operational_year, y=num_facilities, fill=rng_type)) + geom_bar(stat='identity') + labs(title="Operational Project Count by Year", fill="RNG Type", x="Operatonal Year", y="Project Count") + theme(legend.position = "bottom", plot.title = element_text(hjust = 0.5))
+```
+
+## Ag RNG Production Forecast
+
+```{r warning=FALSE}
+anaerobicdigesterfas_clean %>% 
+  mutate(num_animals = pmax(dairy, cattle, poultry, swine, na.rm=T)) %>% 
+  filter(status == "Operational") %>% 
+  filter(animal_farm_type_s %in% c("Dairy", "Cattle", "Poultry", "Swine")) %>% 
+  select(project_name, status, state, animal_farm_type_s, num_animals, project_type, digester_type, year_operational, biogas_generation_estimate_cu_ft_day, electricity_generated_k_wh_yr, biogas_end_use_s, receiving_utility, total_emission_reductions_mtco2e_yr) %>% 
+  ggplot(aes(x=animal_farm_type_s, y=num_animals, fill=project_type)) + geom_bar(position="dodge", stat = "identity") + scale_y_log10() + labs(title="Operational Project Count by Year", fill="Project Type", x="Animal Type", y="Animals")
+```
+
+### Bio Gas Generation Estimate/day (cubic ft)
+
+```{r warning=FALSE}
+anaerobicdigesterfas_clean %>% 
+  mutate(num_animals = pmax(dairy, cattle, poultry, swine, na.rm=T)) %>% 
+  filter(status == "Operational") %>% 
+  filter(animal_farm_type_s %in% c("Dairy", "Cattle", "Poultry", "Swine")) %>% 
+  select(project_name, status, state, animal_farm_type_s, num_animals, project_type, digester_type, year_operational, biogas_generation_estimate_cu_ft_day, electricity_generated_k_wh_yr, biogas_end_use_s, receiving_utility, total_emission_reductions_mtco2e_yr) %>% 
+  ggplot(aes(x=year_operational, y=biogas_generation_estimate_cu_ft_day, color=animal_farm_type_s)) + geom_point() + scale_x_log10() + scale_y_log10() + labs(title="Bio Gas Generation Estimate/day (cubic ft)", color="Animal Farm Type", x="Operational Year", y="Bio Gas Generation Estimate")
+```
+
+### Electricity Generation Estimate/year (KWH)
+
+```{r warning=FALSE}
+anaerobicdigesterfas_clean %>% 
+  mutate(num_animals = pmax(dairy, cattle, poultry, swine, na.rm=T)) %>% 
+  filter(status == "Operational") %>% 
+  filter(animal_farm_type_s %in% c("Dairy", "Cattle", "Poultry", "Swine")) %>% 
+  select(project_name, status, state, animal_farm_type_s, num_animals, project_type, digester_type, year_operational, biogas_generation_estimate_cu_ft_day, electricity_generated_k_wh_yr, biogas_end_use_s, receiving_utility, total_emission_reductions_mtco2e_yr) %>% 
+  ggplot(aes(x=year_operational, y=electricity_generated_k_wh_yr, color=animal_farm_type_s)) + geom_jitter() + scale_x_log10() + scale_y_log10() + labs(title="Electricity Generation Estimate/year (KWH)", color="Animal Farm Type", x="Operational Year", y="Electricity Generation Estimate")
+```
+
+## Demand
+
+### Project Count by End Use
+
+```{r}
+anaerobicdigesterfas_clean %>% 
+  mutate(num_animals = pmax(dairy, cattle, poultry, swine, na.rm=T)) %>% 
+  filter(animal_farm_type_s %in% c("Dairy", "Cattle", "Poultry", "Swine")) %>% 
+  filter(biogas_end_use_s %in% c("CNG", "Electricity", "Cogeneration", "Pipeline Gas", "Pipeline to Electricity")) %>% 
+  select(project_name, status, state, animal_farm_type_s, num_animals, project_type, digester_type, year_operational, biogas_generation_estimate_cu_ft_day, electricity_generated_k_wh_yr, biogas_end_use_s, receiving_utility, total_emission_reductions_mtco2e_yr) %>%
+  ggplot(aes(biogas_end_use_s, fill=animal_farm_type_s)) + geom_bar(position="dodge") + labs(title="Project Count by End Use", x="Biogas End Use", y="Projects", fill="Animal Type")
+```
+
+### Power Generation
+
+```{r}
+anaerobicdigesterfas_clean %>% 
+  mutate(num_animals = pmax(dairy, cattle, poultry, swine, na.rm=T)) %>% 
+  filter(status == "Operational", year_operational > 2010, receiving_utility != "NA") %>% 
+  filter(animal_farm_type_s %in% c("Dairy", "Cattle", "Poultry", "Swine")) %>% 
+  filter(!is.na(electricity_generated_k_wh_yr)) %>% 
+  select(project_name, status, state, animal_farm_type_s, num_animals, project_type, digester_type, year_operational, biogas_generation_estimate_cu_ft_day, electricity_generated_k_wh_yr, biogas_end_use_s, receiving_utility, total_emission_reductions_mtco2e_yr) %>% 
+  ggplot(aes(x=reorder(substr(receiving_utility, 1, 30), electricity_generated_k_wh_yr), y=electricity_generated_k_wh_yr, fill=animal_farm_type_s)) + geom_bar(stat = "identity") + labs(title="Utility Company Generation Acquisition", fill="Animal Farm Type", x="Utility", y="Electricity Generated") + coord_flip()
+```
+
+## Carbon Zero
+
+### Ag Emissions Reductions
+
+```{r warning=FALSE}
+anaerobicdigesterfas_clean %>% 
+  mutate(num_animals = pmax(dairy, cattle, poultry, swine, na.rm=T)) %>% 
+  filter(status == "Operational") %>% 
+  filter(animal_farm_type_s %in% c("Dairy", "Cattle", "Poultry", "Swine")) %>% 
+  select(project_name, status, state, animal_farm_type_s, num_animals, project_type, digester_type, year_operational, biogas_generation_estimate_cu_ft_day, electricity_generated_k_wh_yr, biogas_end_use_s, receiving_utility, total_emission_reductions_mtco2e_yr) %>% 
+  ggplot(aes(x=year_operational, y=total_emission_reductions_mtco2e_yr, color=animal_farm_type_s)) + geom_jitter() + scale_x_log10() + scale_y_log10() + labs(title="Ag Emissions Reductions", color="Animal Farm Type", x="Operational Year", y="Total Emission Reductions")
+```
+
+### Landfill Gas Emissions Reductions
+
+```{r}
+landfillgas_clean %>% 
+  filter(current_landfill_status == "Open", current_project_status == "Operational") %>% 
+  select(project_start_date, waste_in_place_tons, lfg_collected_mmscfd, lfg_energy_project_type, project_type_category, current_year_emission_reductions_mmtco2e_yr_direct, actual_mw_generation, current_year_emission_reductions_mmtco2e_yr_avoided) %>% 
+  ggplot(aes(x=project_start_date, y=current_year_emission_reductions_mmtco2e_yr_direct * 1000, color=project_type_category)) + geom_jitter() + labs(title="Landfill Gas Emissions Reductions", color="Product Type Category", x="Operational Year", y="Total Emission")
+```
+
+### Landfill Gas Emissions Avoidance
+
+```{r}
+landfillgas_clean %>% 
+  filter(current_landfill_status == "Open", current_project_status == "Operational") %>% 
+  select(project_start_date, waste_in_place_tons, lfg_collected_mmscfd, lfg_energy_project_type, project_type_category, current_year_emission_reductions_mmtco2e_yr_direct, actual_mw_generation, current_year_emission_reductions_mmtco2e_yr_avoided) %>% 
+  ggplot(aes(x=project_start_date, y=current_year_emission_reductions_mmtco2e_yr_avoided * 1000, color=project_type_category)) + geom_jitter() + labs(title="Landfill Gas Emissions Avoidance", color="Product Type Category", x="Operational Year", y="Total Emission")
+```
+
